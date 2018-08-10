@@ -1,3 +1,7 @@
-#plink 1.9
+## Genome-wide association study
+## software: plink 1.9, R
+## input: vcf file of all samples and phenotype file in plink ped format
 
 plink --vcf in.vcf.gz --assoc fisher --out result --allow-no-sex --geno 0.05 --maf 0.05 --pheno pheno.txt --not-chr chrY
+awk '{print $1,$3,$8}' result.assoc.fisher > plot.txt
+Rscript ManhattanPlot.r plot.txt pheno.txt ManhattanPlot
