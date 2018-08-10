@@ -1,0 +1,100 @@
+#!/usr/bin/perl
+use strict;
+die "\nUsage: perl $0 <in.vcf.gz> <out.prefix>" unless @ARGV==2;
+
+my $testPos;
+my $step=5;
+my %hash;
+my %hashDelete;
+
+open(IN,"gzip -dc $ARGV[0]|") || die;
+open(AD,">$ARGV[1]\.ad.txt") || die;
+while(<IN>){
+          chomp;
+          next if(/^\#/);
+          my @temp=split;
+          next if($temp[4] eq "<NON_REF>" || $temp[4] eq "." || $temp[4] eq "*");
+          my @info=(split/:/,$temp[-1]);
+          next if($info[0] eq "./.");
+          my @ad=(split/,/,$info[1]);
+          my @gt=(split/\//,$info[0]);
+          print AD "$temp[0]_$temp[1] $ad[0] $ad[1]\n" if($gt[0] ne $gt[1] && $temp[0] ne "chrM");
+          if(!exists($hash{$temp[0]})){
+             $testPos=$temp[1];
+             $hash{$temp[0]}=1;
+             next;
+          }
+          if($temp[1]-$testPos<=$step){
+                $hashDelete{"$temp[0]_$temp[1]"}=1;
+                $hashDelete{"$temp[0]_$testPos"}=1;
+          }
+          $testPos=$temp[1];
+}
+close IN;
+close AD;
+
+my $rScript=<<END;
+Args <- commandArgs()
+df<-read.table(Args[6],head=F,sep=" ",as.is=T)
+names(df)<-c("chr_pos","ad1","ad2")
+df<-df[df\$ad1>0 & df\$ad2>0,]
+df\$pvalue<-apply(df[,-1],1,function(x) binom.test(x[1],x[1]+x[2],0.5)\$p.value)
+write.table(df,Args[7],quote=F,sep=" ",row.names=F,col.names=F)
+q("no")
+END
+
+open(RO,">$ARGV[1]\.alleleBalanceTest.r") || die;
+print RO "$rScript";
+close RO;
+
+`Rscript $ARGV[1]\.alleleBalanceTest.r $ARGV[1]\.ad.txt $ARGV[1]\.ad.stat`;
+open(ADP,"$ARGV[1]\.ad.stat");
+while(<ADP>){
+       my @temp=split;
+       next if($temp[-1]>0.0005);
+       $hashDelete{$temp[0]}=1;
+}
+close ADP;
+
+open(IN,"gzip -dc $ARGV[0]|") || die;
+open(OT,"|bgzip -f >$ARGV[1]\.f.vcf.gz") || die;
+while(<IN>){
+          chomp;
+          if(/^\#/){
+               print OT "$_\n";
+               next;
+          };
+          my @temp=split;
+          next if($temp[4]=~/,/ || $temp[4] eq "." || $temp[4] eq "*");
+          next if(length($temp[3])>10 || length($temp[4])>10);
+          next if(exists($hashDelete{"$temp[0]_$temp[1]"}));
+          my @info=(split/:/,$temp[-1]);
+          next if($info[0] eq "./.");
+          if($temp[4] eq "<NON_REF>"){
+              next if($info[0] ne "0/0");
+              next if($temp[5]<50);
+              next if($info[2]<6);
+                $temp[4]=".";
+                $info[1]=(split/,/,$info[1])[0];
+          }else{
+              next if($temp[5]<100);
+              my @gt=(split/\//,$info[0]);
+              my @ad=(split/,/,$info[1]);
+
+              if($gt[0] eq $gt[1]){
+                  next if($ad[$gt[0]]<6);
+              }else{
+                  next if($ad[$gt[0]]<3 || $ad[$gt[1]]<3);
+              }
+          }
+          $temp[2]=".";
+          $temp[5]=".";
+          $temp[6]=".";
+          $temp[7]=".";
+          $temp[8]="GT";
+          $temp[9]="$info[0]";
+          print OT join("\t",@temp),"\n";
+}
+close IN;
+close OT;
+`tabix -f -p vcf $ARGV[1]\.f.vcf.gz`;
