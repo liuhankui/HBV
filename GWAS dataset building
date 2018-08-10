@@ -1,3 +1,6 @@
+
+## merge the vcf files of all samples using bcftools
+
 if [ $# != 1 ]
 then
 echo "Usage: sh $0 vcf.list
