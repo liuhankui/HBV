@@ -2,6 +2,8 @@
 use strict;
 die "\nUsage: perl $0 <in.vcf.gz> <out.prefix>" unless @ARGV==2;
 
+## Exclude low quality variants
+
 my $testPos;
 my $step=5;
 my %hash;
