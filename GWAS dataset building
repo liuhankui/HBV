@@ -1,0 +1,18 @@
+if [ $# != 1 ]
+then
+echo "Usage: sh $0 vcf.list
+==========================================================================
+
+exapmle of vcf.list:
+sample1.vcf.gz
+sample2.vcf.gz
+sample3.vcf.gz
+......
+exit 1
+fi
+
+$vcfAll=echo `cat $1`
+
+bcftools merge $vcfAll -m all |awk '$5!="."{print}' |bgzip -f > all.vcf.gz && tabix -f -p vcf all.vcf.gz
+bcftools norm all.vcf.gz -m - -o all.bi.vcf
+perl variant_effect_predictor.pl --offline --dir_cache cache/ --vcf --merged --force_overwrite --hgvs --assembly GRCh37 --total_length --everything  --no_progress --tabix --plugin ExAC,ExAC_nonTCGA.r0.3.1.sites.vep.vcf.gz,AC,AN --dir_plugins plugins/ -i all.bi.vcf -o all.bi.vep.vcf.gz
