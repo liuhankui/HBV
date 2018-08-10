@@ -1,4 +1,7 @@
-
+## pipeline: fq2vcf
+## input : clean paired-end fastq file
+## software: bwa, picard, samtools, java, gatk
+## environment: shell
 
 bwa mem -t 8 -aM -R "@RG\tID:sample\tPL:illumina\tPU:sample_pu\tLB:sample_lib\tSM:sample\tCN:BGI" hg19.fasta sample_1.fq.gz sample_2.fq.gz | samtools view -Sb -o sample.bam - &&
 java -XX:-UseGCOverheadLimit -Xmx5g -Djava.io.tmpdir=tmp -jar picard.jar SortSam I=sample.bam OUTPUT=sample.sort.bam SO=coordinate MAX_RECORDS_IN_RAM=1000000 CREATE_INDEX=true && \
@@ -10,5 +13,3 @@ java -Xmx5g -Djava.io.tmpdir=tmp -jar GenomeAnalysisTK.jar -T BaseRecalibrator -
 java -Xmx5g -Djava.io.tmpdir=tmp -jar GenomeAnalysisTK.jar -T PrintReads -R hg19.fasta -I sample.sort.markdup.realigner.bam -BQSR sample.sort.markdup.realigner.grp -o sample.sort.markdup.realigner.recal.bam && \
 java -Xmx5g -Djava.io.tmpdir=tmp -jar GenomeAnalysisTK.jar -T HaplotypeCaller -R hg19.fasta -I sample.sort.markdup.realigner.recal.bam -o sample.g.vcf.gz --dbsnp dbsnp_138.hg19.vcf -L SureSelect_Human_All_Exon_V5.bed -ERC GVCF -variant_index_type LINEAR -variant_index_parameter 128000 -A StrandOddsRatio -A Coverage -A QualByDepth -A FisherStrand -A MappingQualityRankSumTest -A ReadPosRankSumTest -A RMSMappingQuality && \
 java -Xmx5g -Djava.io.tmpdir=tmp -jar GenomeAnalysisTK.jar -T GenotypeGVCFs -R hg19.fasta --variant sample.g.vcf.gz -o sample.vcf.gz --dbsnp dbsnp_138.hg19.vcf -L SureSelect_Human_All_Exon_V5.bed --includeNonVariantSites -A StrandOddsRatio -A Coverage -A QualByDepth -A FisherStrand -A MappingQualityRankSumTest -A ReadPosRankSumTest -A RMSMappingQuality -stand_call_conf 30.0 -stand_emit_conf 10.0
-
-
