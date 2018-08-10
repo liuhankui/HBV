@@ -1,7 +1,8 @@
+#!/bin/bash
+
 ## pipeline: fq2vcf
-## input : clean paired-end fastq file
+## input: clean paired-end fastq file (sample_1.fq.gz sample_2.fq.gz)
 ## software: bwa, picard, samtools, java, gatk
-## environment: shell
 
 bwa mem -t 8 -aM -R "@RG\tID:sample\tPL:illumina\tPU:sample_pu\tLB:sample_lib\tSM:sample\tCN:BGI" hg19.fasta sample_1.fq.gz sample_2.fq.gz | samtools view -Sb -o sample.bam - &&
 java -XX:-UseGCOverheadLimit -Xmx5g -Djava.io.tmpdir=tmp -jar picard.jar SortSam I=sample.bam OUTPUT=sample.sort.bam SO=coordinate MAX_RECORDS_IN_RAM=1000000 CREATE_INDEX=true && \
