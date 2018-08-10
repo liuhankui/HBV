@@ -1,11 +1,13 @@
+#!/bin/bash
 
 ## merge the vcf files of all samples using bcftools
+## software: bcftools, VEP
+## input: a list of all vcf files
 
 if [ $# != 1 ]
 then
 echo "Usage: sh $0 vcf.list
-==========================================================================
-
+==============================
 exapmle of vcf.list:
 sample1.vcf.gz
 sample2.vcf.gz
@@ -14,7 +16,7 @@ sample3.vcf.gz
 exit 1
 fi
 
-$vcfAll=echo `cat $1`
+vcfAll=echo `cat $1`
 
 bcftools merge $vcfAll -m all |awk '$5!="."{print}' |bgzip -f > all.vcf.gz && tabix -f -p vcf all.vcf.gz
 bcftools norm all.vcf.gz -m - -o all.bi.vcf
